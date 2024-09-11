@@ -9,29 +9,36 @@ class User(Base):
     id = Column(Integer, primary_key=True, index=True)
     username = Column(String(255), unique=True, index=True)
     email = Column(String(255), unique=True, index=True, nullable=True)
-    hashed_password = Column(String(255))
-    
-    # Columna que indica si la cuenta del usuario está activa.
-    is_active = Column(Boolean, default=True)
+    password = Column(String(255))
+    #para saber si el usuario es administrador
+    is_admin = Column(Boolean, default=False)
+    #cuando se creo la cuenta
     created_at = Column(DateTime, default=datetime.utcnow)
-    # 'default=datetime.utcnow' asegura que se establezca la fecha y hora actuales si no se proporciona un valor.
+    # ultima conexion
     last_active_at = Column(DateTime, default=datetime.utcnow)
-    # 'default=False' establece el valor predeterminado como falso.
+    # 'en linea?
     is_online = Column(Boolean, default=False)
-    # 'default=0' establece el valor predeterminado en 0 monedas.
+    # monedas
     virtual_coins = Column(Integer, default=0)
-    # Columna para almacenar el número actual de días consecutivos que el usuario ha completado ejercicios.
-    # 'default=0' establece el valor predeterminado en 0 días.
+    #racha actual
     current_streak = Column(Integer, default=0)
-    # Columna para almacenar el historial de transacciones de monedas del usuario.
-    # Se utiliza el tipo JSON para almacenar una lista de objetos que describen cada transacción.
-    # 'default=[]' establece el valor predeterminado como una lista vacía.
-    transaction_history = Column(JSON, default=[])
-    
-    # Columna para almacenar el historial de cambios en las rachas del usuario.
-    # Se utiliza el tipo JSON para almacenar una lista de objetos que describen cada cambio en la racha.
-    # 'default=[]' establece el valor predeterminado como una lista vacía.
+    # Historial de rachas
     streak_history = Column(JSON, default=[])
+    bio = Column(String(255), nullable=True)
+    occupation = Column(String(255), nullable=True)
+    profile_photo = Column(String(255), nullable=True)
+    level = Column(String(50), default="Novato")
 
-# Crear las tablas en la base de datos utilizando el motor de base de datos proporcionado.
+
 User.metadata.create_all(bind=engine)
+
+
+
+
+# Novato: 🟢
+# Explorador: 🔵
+# Veterano: 🟠
+# Maestro: 🔴
+# Gran Maestro: 🟣
+# Sabio: ⚫
+# Leyenda: 🏅

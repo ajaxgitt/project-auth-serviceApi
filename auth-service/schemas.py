@@ -3,11 +3,18 @@ from typing import Optional
 
 class UserCreate(BaseModel):
     username:str
-    hashed_password:str
-    email:Optional[str] = None
+    password:str
+    # email:Optional[str] = None
     
 class LoginData(BaseModel):
     username: str
     password: str
+
+
+class UserUpdate(BaseModel):
+    email: Optional[str] = None
+    bio: Optional[str] = None
+    occupation: Optional[str] = None
+    profile_photo: Optional[str] = None
     
     
