@@ -4,7 +4,7 @@ from typing import Optional
 class UserCreate(BaseModel):
     username:str
     password:str
-    # email:Optional[str] = None
+    email:Optional[str] = None
     
 class LoginData(BaseModel):
     username: str
@@ -12,7 +12,6 @@ class LoginData(BaseModel):
 
 
 class UserUpdate(BaseModel):
-    email: Optional[str] = None
     bio: Optional[str] = None
     occupation: Optional[str] = None
     profile_photo: Optional[str] = None

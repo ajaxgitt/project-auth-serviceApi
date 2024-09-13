@@ -30,8 +30,7 @@ def get_user_by_email(db:Session, email:str):
 
 def create_user(db:Session, user:UserCreate):
     password = pwd_context.hash(user.password)
-    # db_user = User(username = user.username, email = user.email, hashed_password = hashed_password) solo para pruebas
-    db_user = User(username = user.username, password = password)
+    db_user = User(username = user.username, email = user.email, password = password) 
     db.add(db_user)
     db.commit()
     return "user created with success "
@@ -70,6 +69,6 @@ def verify_token(token:str =Depends(oauth2_scheme)):
         username: str = payload.get("sub")
         if username is None:
             raise HTTPException(status_code=403, detail="token is invalid or expired")
-        return payload
+        return payload 
     except JWTError:
         raise HTTPException(status_code=403, detail="token is invalid or expired")
