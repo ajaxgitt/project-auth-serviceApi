@@ -3,7 +3,7 @@ from fastapi import  Depends, HTTPException, status, APIRouter
 from sqlalchemy.orm import Session
 from passlib.context import CryptContext
 from . services import ( UserCreate, get_user_by_username, create_access_token , get_user_by_email,
-                        authenticate_user , verify_token, create_user,get_user_by_id)
+                        authenticate_user , verify_token, create_user)
 from fastapi import Depends
 from . database import SessionLocal
 from fastapi.security import OAuth2PasswordBearer
