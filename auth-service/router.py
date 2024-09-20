@@ -2,7 +2,7 @@
 from fastapi import  Depends, HTTPException, status, APIRouter
 from sqlalchemy.orm import Session
 from passlib.context import CryptContext
-from . services import ( UserCreate, get_user_by_username, create_access_token , get_user_by_email,
+from . services import ( UserCreate, get_user_by_username, get_user_by_id,create_access_token , get_user_by_email,
                         authenticate_user , verify_token, create_user)
 from fastapi import Depends
 from . database import SessionLocal
@@ -41,7 +41,10 @@ def register_user(user:UserCreate, db:Session = Depends(get_db)):
     if db_email:
         raise HTTPException(status_code=400, detail="Correo electrónico ya registrado")
   
-    return create_user(db=db, user=user)
+    created_user = create_user(db=db, user=user)
+    return {"id": created_user.id, "username": created_user.username, "email": created_user.email}
+  
+    # return create_user(db=db, user=user)
 
 
 
@@ -53,6 +56,24 @@ def get_users(skip:int = 0, limit:int=100, db:Session = Depends(get_db)):
     users = db.query(User).offset(skip).limit(limit).all()
     return users
 
+
+
+
+# @user.post("/api/user/token")
+# def login_for_access_token(login_data: LoginData, db: Session = Depends(get_db)):
+#     """funcion para logeaarnos en la pagina con una respuesta jwt"""
+#     user = authenticate_user(login_data.username, login_data.password, db)
+#     if not user:
+#         raise HTTPException(
+#             status_code=status.HTTP_401_UNAUTHORIZED,
+#             detail="Usuario o contraseña incorrectos",
+#             headers={"WWW-Authenticate": "Bearer"}
+#         )
+#     access_token_expires = timedelta(minutes=int(config("ACCESS_TOKEN_EXPIRE_MINUTES")))
+#     access_token = create_access_token(
+#         data={"sub": user.username}, expires_delta=access_token_expires
+#     )
+#     return {"access_token": access_token, "token_type": "bearer"}
 
 
 
@@ -68,7 +89,7 @@ def login_for_access_token(login_data: LoginData, db: Session = Depends(get_db))
         )
     access_token_expires = timedelta(minutes=int(config("ACCESS_TOKEN_EXPIRE_MINUTES")))
     access_token = create_access_token(
-        data={"sub": user.username}, expires_delta=access_token_expires
+        data={"sub": str(user.id)}, expires_delta=access_token_expires
     )
     return {"access_token": access_token, "token_type": "bearer"}
 
@@ -84,11 +105,32 @@ async def verify_user_token(token: str):
 @user.get("/api/user/perfil/{token}")
 def get_peril_user(token:str, db: Session = Depends(get_db)):
     """funcion para obtener el usuario por el token"""
-    user = verify_token(token=token)    
-    db_user = get_user_by_username(db=db, username=user['sub'])
+    user = verify_token(token=token)   
+    db_user = get_user_by_id(db=db, id=user['sub']) 
+    # db_user = get_user_by_username(db=db, username=user['sub'])
     if db_user is None:
         raise HTTPException(status_code=404, detail="No se encontró el usuario")
     return db_user
+    
+    
+    
+@user.get("/api/user_id/{token}")
+def get_peril_user(token:str, db: Session = Depends(get_db)):
+    """funcion para obtener el id del usuario por el token"""
+    user = verify_token(token=token)    
+    db_user = get_user_by_id(db=db, id=user['sub'])
+    if db_user is None:
+        raise HTTPException(status_code=404, detail="No se encontró el usuario")
+    return db_user.id
+
+
+
+@user.get("/api/get_id/{token}")
+def get_id(token:str):
+    """funcion para obtener el id del usuario usando el token sin db"""
+    id_user = verify_token(token=token)
+    return int(id_user['sub'])
+    
     
   
 
