@@ -113,7 +113,10 @@ def update_user(token: str, user_update: UserUpdate, db: Session = Depends(get_d
     
     return {"message": "User updated successfully", "user": db_user}
 
-
+@user.get("/api/user/perfil")
+def get_perfil_user():
+    user_data = {"id": 1, "name": "John Doe"}
+    return user_data
   
 
 

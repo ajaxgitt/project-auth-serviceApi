@@ -10,17 +10,11 @@ class User(Base):
     username = Column(String(255), unique=True, index=True)
     email = Column(String(255), unique=True, index=True, nullable=True)
     password = Column(String(255))
-    #para saber si el usuario es administrador
     is_admin = Column(Boolean, default=False)
-    #cuando se creo la cuenta
     created_at = Column(DateTime, default=datetime.utcnow)
-    # ultima conexion
     last_active_at = Column(DateTime, default=datetime.utcnow)
-    # 'en linea?
     is_online = Column(Boolean, default=False)
-    # monedas
     virtual_coins = Column(Integer, default=0)
-    #racha actual
     current_streak = Column(Integer, default=0)
     # Historial de rachas
     streak_history = Column(JSON, default=[])
