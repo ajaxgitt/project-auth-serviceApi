@@ -140,7 +140,7 @@ def get_id(token:str):
 def update_user(token: str, user_update: UserUpdate, db: Session = Depends(get_db)):
     # Buscar el usuario en la base de datos
     user = verify_token(token=token)    
-    db_user = get_user_by_username(db=db, username=user['sub'])
+    db_user = get_user_by_id(db=db, id=user['sub'])
     if db_user is None:
         raise HTTPException(status_code=404, detail="No se encontró el usuario")
     
