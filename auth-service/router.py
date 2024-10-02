@@ -59,22 +59,6 @@ def get_users(skip:int = 0, limit:int=100, db:Session = Depends(get_db)):
 
 
 
-# @user.post("/api/user/token")
-# def login_for_access_token(login_data: LoginData, db: Session = Depends(get_db)):
-#     """funcion para logeaarnos en la pagina con una respuesta jwt"""
-#     user = authenticate_user(login_data.username, login_data.password, db)
-#     if not user:
-#         raise HTTPException(
-#             status_code=status.HTTP_401_UNAUTHORIZED,
-#             detail="Usuario o contraseña incorrectos",
-#             headers={"WWW-Authenticate": "Bearer"}
-#         )
-#     access_token_expires = timedelta(minutes=int(config("ACCESS_TOKEN_EXPIRE_MINUTES")))
-#     access_token = create_access_token(
-#         data={"sub": user.username}, expires_delta=access_token_expires
-#     )
-#     return {"access_token": access_token, "token_type": "bearer"}
-
 
 
 @user.post("/api/user/token")
