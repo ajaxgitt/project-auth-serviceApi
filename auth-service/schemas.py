@@ -1,5 +1,6 @@
-from pydantic import BaseModel
-from typing import Optional
+from pydantic import BaseModel, EmailStr, Field
+from typing import List, Optional
+from datetime import datetime
 
 
 class FotoUpdate(BaseModel):
@@ -33,3 +34,19 @@ class UserUpdate(BaseModel):
     
 class ListRespose(BaseModel):
     id : int
+    
+class UserCreate(BaseModel):
+    username: str
+    email: str
+    password: str
+
+class GrupoCreate(BaseModel):
+    name_group: str
+    
+    
+class Red_Miembros(BaseModel):
+    id:int
+    username:str
+    profile_photo:Optional[str] = None
+
+
