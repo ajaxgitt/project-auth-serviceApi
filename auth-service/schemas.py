@@ -6,7 +6,9 @@ from datetime import datetime
 class FotoUpdate(BaseModel):
     profile_photo: Optional[str] = None
     
-    
+class NotificationRequest(BaseModel):
+    usernames: List[str]
+    message: str
     
 class UserCreate(BaseModel):
     username:str

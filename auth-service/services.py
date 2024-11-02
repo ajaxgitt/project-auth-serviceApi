@@ -1,4 +1,4 @@
-from fastapi import Depends, HTTPException, status
+from fastapi import Depends, HTTPException,WebSocket
 from sqlalchemy.orm import Session
 from fastapi.security import OAuth2PasswordBearer
 from jose import JWTError, jwt
@@ -7,11 +7,37 @@ from passlib.context import CryptContext
 from . models import User
 from .schemas import UserCreate
 from decouple import config
+from typing import Dict
+
 
 
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl = "token")
 pwd_context = CryptContext(schemes=['bcrypt'], deprecated = "auto")
+
+
+class ConnectionManager:
+    def __init__(self):
+        self.active_connections: Dict[int, WebSocket] = {}  
+
+    async def connect(self, websocket: WebSocket, user_id: int):
+        await websocket.accept()
+        self.active_connections[user_id] = websocket  
+
+    def disconnect(self, user_id: int):
+        del self.active_connections[user_id]
+
+    async def send_message(self, message: str, user_id: int):
+        websocket = self.active_connections.get(user_id)
+        if websocket:
+            await websocket.send_text(message)
+
+    async def broadcast(self, message: str):
+        for connection in self.active_connections.values():
+            await connection.send_text(message)
+
+
+
 
 
 def get_user_by_username(db: Session, username: str):

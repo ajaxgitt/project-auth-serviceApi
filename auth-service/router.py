@@ -1,23 +1,22 @@
 
-from fastapi import   HTTPException, status, APIRouter,WebSocket, WebSocketDisconnect, Depends
+from fastapi import   HTTPException, status, APIRouter,WebSocket, WebSocketDisconnect, Depends , File ,UploadFile
 from sqlalchemy.orm import Session
 from passlib.context import CryptContext
 from .services import ( UserCreate, get_user_by_username, get_user_by_id,create_access_token , get_user_by_email,
-                        authenticate_user , verify_token, create_user)
+                        authenticate_user , verify_token, create_user,ConnectionManager )
 
 from . database import SessionLocal
 from fastapi.security import OAuth2PasswordBearer
 from datetime import timedelta, datetime
 from decouple import config
 from . models import User, Grupo,Notification
-from .schemas import LoginData, UserUpdate,UserResponse,FotoUpdate,GrupoCreate,Red_Miembros
+from .schemas import LoginData, UserUpdate,UserResponse,FotoUpdate,GrupoCreate,Red_Miembros,NotificationRequest
 from typing import List ,Dict
 
 
-
-
-
-
+import cloudinary # type:ignore
+import cloudinary.uploader #type:ignore
+from fastapi.responses import JSONResponse
 
 
 
@@ -37,28 +36,9 @@ def get_db():
         db.close()
 
 
-
-class ConnectionManager:
-    def __init__(self):
-        self.active_connections: Dict[int, WebSocket] = {}  
-
-    async def connect(self, websocket: WebSocket, user_id: int):
-        await websocket.accept()
-        self.active_connections[user_id] = websocket  
-
-    def disconnect(self, user_id: int):
-        del self.active_connections[user_id]
-
-    async def send_message(self, message: str, user_id: int):
-        websocket = self.active_connections.get(user_id)
-        if websocket:
-            await websocket.send_text(message)
-
-    async def broadcast(self, message: str):
-        for connection in self.active_connections.values():
-            await connection.send_text(message)
-
 manager = ConnectionManager()
+
+
 
 @user.websocket("/ws/{user_id}")
 async def websocket_endpoint(websocket: WebSocket, user_id: int):
@@ -78,16 +58,6 @@ async def websocket_endpoint(websocket: WebSocket, user_id: int):
 
 
 
-# @user.post("/send_notification/{user_id}/")
-# async def send_notification(user_id: int, message: str, db: Session = Depends(get_db)):
-#     """Endpoint para enviar notificaciones a un usuario específico"""
-#     user = db.query(User).filter(User.id == user_id).first()
-#     if user:
-#         await manager.send_message(message, user_id)
-        
-#         return {"message": f"Notificación enviada a {user.username}!"}
-#     return {"error": "Usuario no encontrado!"}
-
 
 
 @user.post("/send_notification/{username}/")
@@ -104,12 +74,9 @@ async def send_notification(username: str, message: str, db: Session = Depends(g
 
 
 
-from pydantic import BaseModel
-from typing import List
 
-class NotificationRequest(BaseModel):
-    usernames: List[str]
-    message: str
+
+
 
 @user.post("/send_notifications/")
 async def send_notifications(request: NotificationRequest, db: Session = Depends(get_db)):
@@ -165,26 +132,12 @@ async def delete_notification(notification_id:int,db:Session=Depends(get_db)):
         
 
 
-# @user.post("/send_notification/{username}/")
-# async def send_notification(username: str, message: str, db: Session = Depends(get_db)):
-#     """Endpoint para enviar notificaciones a un usuario específico"""
-#     user_id = db.query(User).filter(User.username == username).first()
-#     print(";id userrrrrrrrrrrr")
-#     print(user_id.id)
-#     if user_id:
-#         user = db.query(User).filter(User.id == user_id.id).first()
-#         if user:
-#             await manager.send_message(message, user_id.id)
+
+
+
+
+
         
-#         return {"message": f"Notificación enviada a {user.username}!"}
-#     return {"error": "Usuario no encontrado!"}
-
-
-
-
-
-
-
 
 @user.post("/api/user/register" ,tags=['crear'])
 def register_user(user:UserCreate, db:Session = Depends(get_db)):
@@ -203,7 +156,6 @@ def register_user(user:UserCreate, db:Session = Depends(get_db)):
     created_user = create_user(db=db, user=user)
     return {"id": created_user.id, "username": created_user.username, "email": created_user.email}
   
-    # return create_user(db=db, user=user)
 
 
 
@@ -315,7 +267,6 @@ def update_user(token: str, user_update: UserUpdate, db: Session = Depends(get_d
     if user_update.occupation is not None:
         db_user.occupation = user_update.occupation
     
-    
     db.commit()
     
     return {"message": "User updated successfully", "user": db_user}
@@ -324,7 +275,6 @@ def update_user(token: str, user_update: UserUpdate, db: Session = Depends(get_d
 @user.put('/api/foto/update/{token}',tags=['editar'])
 def update_foto(token: str, foto_update: FotoUpdate, db: Session = Depends(get_db)):
     """servicio para editar la foto del user"""
-    # Buscar el usuario en la base de datos
     user = verify_token(token=token)    
     db_user = get_user_by_id(db=db, id=user['sub'])
     if db_user is None:
@@ -332,13 +282,61 @@ def update_foto(token: str, foto_update: FotoUpdate, db: Session = Depends(get_d
     
     if foto_update.profile_photo is not None:
         db_user.profile_photo = foto_update.profile_photo
-    
-    
     db.commit()
     
     return {"message": "User updated successfully", "user": db_user}
 
-  
+
+@user.put('/api/exp_update/{token}/{exp}', tags=['exp'])
+def update_exp(token:str,exp:int, db:Session = Depends(get_db)):
+    
+
+    """funcion para acatualisar la exp de puntos del user"""
+    
+    user = verify_token(token=token)    
+    user_id = get_user_by_id(db=db, id=user['sub'])
+    
+    
+    db_user = db.query(User).filter(User.id==user_id.id).first()
+    if db_user is None:
+        raise HTTPException(status_code=404, detail="No se encontró el usuario")
+    if exp == 1:
+        db_user.exp += 5
+    db.commit()
+    return {"message": "EXP del usuario actualizada", "user_id": user_id, "new_exp": db_user.exp}
+
+
+
+
+# Configura tus credenciales de Cloudinary
+cloudinary.config(
+    cloud_name='digvece58',  # Reemplaza con tu Cloud Name
+    api_key='689978857773482',        # Reemplaza con tu API Key
+    api_secret='GmiUXiABsY3r-ot9mxPgcivF_wU'   # Reemplaza con tu API Secret
+)
+
+
+
+@user.put("/users/{user_id}/profile_photo/")
+async def update_profile_photo(user_id: int, file: UploadFile = File(...), db:Session=Depends(get_db)):
+    try:
+        # Sube la imagen a Cloudinary
+        response = cloudinary.uploader.upload(file.file)
+        image_url = response['secure_url']  # Obtén la URL de la imagen
+
+        # Aquí deberías guardar la URL en tu base de datos asociada al usuario
+        # Por ejemplo:
+        user = db.query(User).filter(User.id == user_id).first()
+        user.profile_photo = image_url
+        db.commit()
+
+        return {"url": image_url}  # Devuelve la URL de la imagen
+    except Exception as e:
+        return JSONResponse(content={"error": str(e)}, status_code=400)
+
+
+
+
   
 #   grupos
 

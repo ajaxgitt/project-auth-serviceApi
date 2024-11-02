@@ -34,7 +34,7 @@ class User(Base):
     created_at = Column(DateTime, default=datetime.utcnow)
     last_active_at = Column(DateTime, default=datetime.utcnow)
     is_online = Column(Boolean, default=False)
-    virtual_coins = Column(Integer, default=0)
+    virtual_coins = Column(Integer, default=50)
     exp = Column(BigInteger, default=0)
     bio = Column(String(255), nullable=True)
     occupation = Column(String(255), nullable=True)
