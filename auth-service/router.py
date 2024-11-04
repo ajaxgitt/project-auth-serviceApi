@@ -1,4 +1,3 @@
-
 from fastapi import   HTTPException, status, APIRouter,WebSocket, WebSocketDisconnect, Depends , File ,UploadFile
 from sqlalchemy.orm import Session
 from passlib.context import CryptContext
@@ -9,9 +8,12 @@ from . database import SessionLocal
 from fastapi.security import OAuth2PasswordBearer
 from datetime import timedelta, datetime
 from decouple import config
-from . models import User, Grupo,Notification
-from .schemas import LoginData, UserUpdate,UserResponse,FotoUpdate,GrupoCreate,Red_Miembros,NotificationRequest
+from . models import User, Grupo,Notification,grupos_users
+from .schemas import LoginData, UserUpdate,UserResponse,FotoUpdate,GrupoCreate,Red_Miembros,NotificationRequest,Miembros
 from typing import List ,Dict
+
+from sqlalchemy import delete
+
 
 
 import cloudinary # type:ignore
@@ -39,6 +41,7 @@ def get_db():
 manager = ConnectionManager()
 
 
+# WebSocket
 
 @user.websocket("/ws/{user_id}")
 async def websocket_endpoint(websocket: WebSocket, user_id: int):
@@ -57,9 +60,7 @@ async def websocket_endpoint(websocket: WebSocket, user_id: int):
 
 
 
-
-
-
+#notificaciones
 @user.post("/send_notification/{username}/")
 async def send_notification(username: str, message: str, db: Session = Depends(get_db)):
     """Endpoint para enviar notificaciones a un usuario específico"""
@@ -78,10 +79,13 @@ async def send_notification(username: str, message: str, db: Session = Depends(g
 
 
 
-@user.post("/send_notifications/")
+@user.post("/send_notifications/",tags=['notificacaiones'])
 async def send_notifications(request: NotificationRequest, db: Session = Depends(get_db)):
     usernames = request.usernames
     message = request.message
+    grupo_id = request.grupo_id
+    name_group = request.name_group
+    
     not_found_users = []
 
     for username in usernames:
@@ -90,6 +94,8 @@ async def send_notifications(request: NotificationRequest, db: Session = Depends
             new_notification = Notification(
                 user_id=user.id,
                 message=message,
+                name_group =name_group,
+                grupo_id =grupo_id,
                 created_at=datetime.utcnow(),
                 is_read=False
             )
@@ -110,7 +116,7 @@ async def send_notifications(request: NotificationRequest, db: Session = Depends
 
 
 
-@user.get('/get_notificaciones/{user_id}/')
+@user.get('/get_notificaciones/{user_id}/',tags=['notificacaiones'])
 def get_notificaciones(user_id: int , db:Session =Depends(get_db)):
     """Endpoint para enviar leer todas las notificaciones"""
     notificaciones_user = db.query(Notification).filter(Notification.user_id == user_id).all()
@@ -120,7 +126,7 @@ def get_notificaciones(user_id: int , db:Session =Depends(get_db)):
     return notificaciones_user 
 
 
-@user.delete('/notification/{notification_id}')
+@user.delete('/notification/{notification_id}' ,tags=['notificacaiones'] )
 async def delete_notification(notification_id:int,db:Session=Depends(get_db)):
     """"funcion para leiminar una notificacion"""
     notification = db.query(Notification).filter(Notification.id == notification_id).first()
@@ -138,6 +144,7 @@ async def delete_notification(notification_id:int,db:Session=Depends(get_db)):
 
 
         
+# Usuarios
 
 @user.post("/api/user/register" ,tags=['crear'])
 def register_user(user:UserCreate, db:Session = Depends(get_db)):
@@ -156,8 +163,6 @@ def register_user(user:UserCreate, db:Session = Depends(get_db)):
     created_user = create_user(db=db, user=user)
     return {"id": created_user.id, "username": created_user.username, "email": created_user.email}
   
-
-
 
 
 
@@ -250,13 +255,42 @@ def get_id(token:str):
     
     
   
+cloudinary.config(
+    cloud_name='digvece58',  
+    api_key='689978857773482', 
+    api_secret='GmiUXiABsY3r-ot9mxPgcivF_wU'   
+)
 
+
+
+@user.put("/users/{token}/profile_photo/")
+async def update_profile_photo(token: str, file: UploadFile = File(...), db:Session=Depends(get_db)):
+    
+    try:
+       
+        
+        usuario = verify_token(token=token)    
+        user_id = get_user_by_id(db=db, id=usuario['sub'])
+    
+        # Sube la imagen a Cloudinary
+        response = cloudinary.uploader.upload(file.file)
+        image_url = response['secure_url']  # Obtén la URL de la imagen
+
+        # Aquí deberías guardar la URL en tu base de datos asociada al usuario
+        # Por ejemplo:
+        user = db.query(User).filter(User.id == user_id.id).first()
+        user.profile_photo = image_url
+        db.commit()
+
+        return {"url": image_url}  # Devuelve la URL de la imagen
+    except Exception as e:
+        return JSONResponse(content={"error": str(e)}, status_code=400)
+    
 
 
 @user.put('/api/user/update/{token}',tags=['editar'])
 def update_user(token: str, user_update: UserUpdate, db: Session = Depends(get_db)):
     """servicio para editar la informacion del user"""
-    # Buscar el usuario en la base de datos
     user = verify_token(token=token)    
     db_user = get_user_by_id(db=db, id=user['sub'])
     if db_user is None:
@@ -264,12 +298,20 @@ def update_user(token: str, user_update: UserUpdate, db: Session = Depends(get_d
     
     if user_update.bio is not None:
         db_user.bio = user_update.bio
+    if user_update.name is not None:
+        db_user.name = user_update.name
+    if user_update.phone_number is not None:
+        db_user.phone_number = user_update.phone_number
+        
     if user_update.occupation is not None:
         db_user.occupation = user_update.occupation
     
     db.commit()
     
     return {"message": "User updated successfully", "user": db_user}
+
+
+
 
   
 @user.put('/api/foto/update/{token}',tags=['editar'])
@@ -308,31 +350,7 @@ def update_exp(token:str,exp:int, db:Session = Depends(get_db)):
 
 
 
-# Configura tus credenciales de Cloudinary
-cloudinary.config(
-    cloud_name='digvece58',  # Reemplaza con tu Cloud Name
-    api_key='689978857773482',        # Reemplaza con tu API Key
-    api_secret='GmiUXiABsY3r-ot9mxPgcivF_wU'   # Reemplaza con tu API Secret
-)
 
-
-
-@user.put("/users/{user_id}/profile_photo/")
-async def update_profile_photo(user_id: int, file: UploadFile = File(...), db:Session=Depends(get_db)):
-    try:
-        # Sube la imagen a Cloudinary
-        response = cloudinary.uploader.upload(file.file)
-        image_url = response['secure_url']  # Obtén la URL de la imagen
-
-        # Aquí deberías guardar la URL en tu base de datos asociada al usuario
-        # Por ejemplo:
-        user = db.query(User).filter(User.id == user_id).first()
-        user.profile_photo = image_url
-        db.commit()
-
-        return {"url": image_url}  # Devuelve la URL de la imagen
-    except Exception as e:
-        return JSONResponse(content={"error": str(e)}, status_code=400)
 
 
 
@@ -348,8 +366,12 @@ def create_grupo(grupo: GrupoCreate,token: str, db: Session = Depends(get_db)):
      
     if db.query(Grupo).filter(Grupo.name_group == grupo.name_group).first():
         raise HTTPException(status_code=400, detail="Este nombre  ya existe")
+    if len(grupo.name_group) >= 8:
+        raise HTTPException(status_code=400, detail="Este nombre  es muy largo")
     else:
-        db_grupo = Grupo(name_group=grupo.name_group)
+        db_grupo = Grupo(
+            name_group=grupo.name_group,
+            )
         db.add(db_grupo)
         db.commit()
         db.refresh(db_grupo)
@@ -358,9 +380,43 @@ def create_grupo(grupo: GrupoCreate,token: str, db: Session = Depends(get_db)):
         return db_grupo
 
 
-@user.post("/users/{user_id}/grupos/{grupo_id}",tags=['grupos'] )
-def add_user_to_grupo(user_id: int, grupo_id: int, db: Session = Depends(get_db)):
-    """funcion para agregar nuevos miembros algrupo"""
+
+
+@user.delete('/api/{user_id}/{grupo_id}/', tags=['grupos'])
+def remove_member(user_id: int, grupo_id: int, db: Session = Depends(get_db)):
+    """Función para eliminar o salir de un grupo"""
+    
+    # Verificar que el grupo existe
+    grupo = db.query(Grupo).filter(Grupo.id == grupo_id).first()
+    if grupo is None:
+        raise HTTPException(status_code=400, detail="Grupo no encontrado")
+
+    # Verificar si el usuario existe
+    user = db.query(User).filter(User.id == user_id).first()
+    if user is None:
+        raise HTTPException(status_code=404, detail="Usuario no encontrado")
+
+    # Eliminar la relación en la tabla de asociación 'grupos_users'
+    stmt = delete(grupos_users).where(
+        grupos_users.c.user_id == user_id,
+        grupos_users.c.grupo_id == grupo_id
+    )
+    result = db.execute(stmt)
+
+    # Si no se eliminó ninguna fila, el usuario no estaba en el grupo
+    if result.rowcount == 0:
+        raise HTTPException(status_code=404, detail="El usuario no es miembro del grupo")
+
+    db.commit()
+    
+    return {"message": "Usuario eliminado del grupo correctamente"}
+
+
+
+
+@user.post("/users/{user_id}/grupos/{grupo_id}/{notification_id}",tags=['grupos'] )
+def add_user_to_grupo(notification_id:int, user_id: int, grupo_id: int, db: Session = Depends(get_db)):
+    """funcion para agregar un nuevo miembro algrupo"""
     db_user = db.query(User).filter(User.id == user_id).first()
     db_grupo = db.query(Grupo).filter(Grupo.id == grupo_id).first()
 
@@ -369,7 +425,18 @@ def add_user_to_grupo(user_id: int, grupo_id: int, db: Session = Depends(get_db)
 
     db_user.grupos.append(db_grupo)
     db.commit()
+    
+    # eliminar la notificacion
+    
+    notification = db.query(Notification).filter(Notification.id == notification_id).first()
+    if notification is None:
+        raise HTTPException(status_code=404, detail="No se encontró dicha notificacion")
+    db.delete(notification)
+    db.commit()
+    
     return {"message": "User added to grupo"}
+
+
 
 @user.get("/users/{user_id}/grupos",tags=['grupos'])
 def get_user_grupos(user_id: int, db: Session = Depends(get_db)):
@@ -379,6 +446,8 @@ def get_user_grupos(user_id: int, db: Session = Depends(get_db)):
         raise HTTPException(status_code=404, detail="User not found")
     
     return db_user.grupos
+
+
 
 @user.get("/grupos/{grupo_id}/users", response_model=List[Red_Miembros],tags=['grupos'])
 def get_grupo_users(grupo_id: int, db: Session = Depends(get_db)):
@@ -409,3 +478,4 @@ def add_users_to_grupo(grupo_id: int, user_ids: List[int], db: Session = Depends
 
     db.commit()
     return {"message": "Users added to grupo"}
+

@@ -3,12 +3,23 @@ from typing import List, Optional
 from datetime import datetime
 
 
+    
+    
+
+class Miembros(BaseModel):
+    user_id:int
+    grupo_id:int
+    
+    
 class FotoUpdate(BaseModel):
     profile_photo: Optional[str] = None
     
 class NotificationRequest(BaseModel):
     usernames: List[str]
     message: str
+    name_group:str
+    grupo_id :int
+    
     
 class UserCreate(BaseModel):
     username:str
@@ -26,10 +37,16 @@ class LoginData(BaseModel):
     password: str
 
 
+
+
+
 class UserUpdate(BaseModel):
+    name: Optional[str] = None
     bio: Optional[str] = None
     occupation: Optional[str] = None
+    phone_number: Optional[str] = None
 
+    
 
 
     

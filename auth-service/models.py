@@ -13,8 +13,15 @@ class Notification(Base):
     message = Column(String(255), nullable=False)
     created_at = Column(DateTime, default=datetime.utcnow)
     is_read = Column(Boolean, default=False)
+    grupo_id = Column(Integer)
+    name_group = Column(String(50), nullable=False)
+    
+    
 
     user = relationship("User", back_populates="notifications")
+    
+    
+    
 
 grupos_users = Table('grupos_users', Base.metadata,
     Column('user_id', Integer, ForeignKey('users.id')),

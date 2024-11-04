@@ -12,8 +12,11 @@ from typing import Dict
 
 
 
+
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl = "token")
 pwd_context = CryptContext(schemes=['bcrypt'], deprecated = "auto")
+
+
 
 
 class ConnectionManager:
