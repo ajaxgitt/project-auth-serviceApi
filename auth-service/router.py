@@ -61,7 +61,7 @@ async def websocket_endpoint(websocket: WebSocket, user_id: int):
 
 
 #notificaciones
-@user.post("/send_notification/{username}/")
+@user.post("/send_notification/{username}/",tags=['notificacaiones'])
 async def send_notification(username: str, message: str, db: Session = Depends(get_db)):
     """Endpoint para enviar notificaciones a un usuario específico"""
     user_id = db.query(User).filter(User.username == username).first()
@@ -124,6 +124,25 @@ def get_notificaciones(user_id: int , db:Session =Depends(get_db)):
         raise HTTPException(status_code=404, detail="No se encontró el usuario")
         
     return notificaciones_user 
+
+@user.get('/get_contador/{id_user}',tags=['notificacaiones'])
+def get_contador(id_user:int, db:Session = Depends(get_db)):
+    """funcion que devuelve elk contador de notificaciones"""
+    db_user = db.query(User).filter(User.id == id_user).first()
+    if db_user is None:
+        raise HTTPException(status_code=404, detail="No se encontró el usuario")
+    notificacionesdb_user = db.query(Notification).filter(Notification.user_id==db_user.id).all()
+    if notificacionesdb_user is None:
+        raise HTTPException(status_code=404, detail="No se ninguna notificacion para  el usuario")
+    
+    return {"notificaiones": len(notificacionesdb_user)} 
+
+
+
+
+    
+
+
 
 
 @user.delete('/notification/{notification_id}' ,tags=['notificacaiones'] )
@@ -194,6 +213,17 @@ def get_user_id(id:int, db:Session = Depends(get_db)):
 
         
 
+@user.get('/api/get_user/grupos/{token}',tags=['optener'])
+def get_user_id_grupos_list(token:str, db:Session = Depends(get_db)):
+    """funciona para llamar a aun user por su token y ver sus grupos"""
+    
+    user = verify_token(token=token)   
+    db_user = get_user_by_id(db=db, id=user['sub']) 
+    if db_user is None:
+        raise HTTPException(status_code=404, detail="No se encontró el usuario")
+
+    return {"grupos":db_user.grupos}
+  
 
 
 

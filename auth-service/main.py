@@ -2,6 +2,7 @@ from fastapi import FastAPI
 from fastapi.security import OAuth2PasswordBearer
 from fastapi.middleware.cors import CORSMiddleware
 from .router import user
+from .eventos_routes import evento
 
 
 
@@ -24,5 +25,6 @@ app.add_middleware(
 )
 
 app.include_router(user)
+app.include_router(evento)
 
 

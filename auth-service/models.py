@@ -28,6 +28,25 @@ grupos_users = Table('grupos_users', Base.metadata,
     Column('grupo_id', Integer, ForeignKey('grupos.id'))
 )
 
+event_group_association = Table(
+    'event_group', Base.metadata,
+    Column('event_id', Integer, ForeignKey('events.id')),
+    Column('group_id', Integer, ForeignKey('grupos.id'))
+)
+
+class Event(Base):
+    __tablename__ = "events"
+    
+    id = Column(Integer, primary_key=True, index=True)
+    name = Column(String(255), nullable=False)
+    description = Column(String(255), nullable=True)
+    start_time = Column(DateTime, nullable=False)
+    end_time = Column(DateTime, nullable=False)
+    
+    groups = relationship("Grupo", secondary=event_group_association, back_populates="events")
+
+
+
 class User(Base):
     __tablename__ = "users"  
     
@@ -62,6 +81,7 @@ class Grupo(Base):
     name_group = Column(String(50), unique=True, index=True)
     
     usuarios = relationship('User', secondary=grupos_users, back_populates='grupos')  
+    events = relationship("Event", secondary=event_group_association, back_populates="groups")
 
 
 

@@ -31,6 +31,7 @@ class UserResponse(BaseModel):
     username:str
     profile_photo:Optional[str] = None
     email:str
+    exp:int
     
 class LoginData(BaseModel):
     username: str
