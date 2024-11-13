@@ -33,6 +33,11 @@ class UserResponse(BaseModel):
     email:str
     exp:int
     
+class UsersWithTokenResponse(BaseModel):
+    id_token: int
+    users: List[UserResponse]
+    
+    
 class LoginData(BaseModel):
     username: str
     password: str
@@ -63,10 +68,28 @@ class UserCreate(BaseModel):
 class GrupoCreate(BaseModel):
     name_group: str
     
-    
+
 class Red_Miembros(BaseModel):
     id:int
     username:str
     profile_photo:Optional[str] = None
+    
+    
+class Red_Miembros_group(BaseModel):
+    id:int
+    username:str
+    profile_photo:Optional[str] = None
+    exp:int
+    level:str
 
 
+    
+# class Grupo_respose(BaseModel):
+#     id:int
+#     miembros : List[Red_Miembros]
+    
+
+class Grupo_respose(BaseModel):
+    id:int
+    name_group:str
+    usuarios : List[Red_Miembros_group]

@@ -8,9 +8,7 @@ from .schemas_event import *
 
 
 
-
 evento = APIRouter()
-
 
 def get_db():
     db = SessionLocal()

@@ -9,7 +9,7 @@ from fastapi.security import OAuth2PasswordBearer
 from datetime import timedelta, datetime
 from decouple import config
 from . models import User, Grupo,Notification,grupos_users
-from .schemas import LoginData, UserUpdate,UserResponse,FotoUpdate,GrupoCreate,Red_Miembros,NotificationRequest,Miembros
+from .schemas import LoginData, UserUpdate,UserResponse,FotoUpdate,GrupoCreate,Red_Miembros,NotificationRequest,Miembros,UsersWithTokenResponse,Grupo_respose
 from typing import List ,Dict
 
 from sqlalchemy import delete
@@ -194,13 +194,26 @@ def get_users(db:Session = Depends(get_db)):
 
 
 
-
-@user.get('/api/users/lists', response_model=list[UserResponse] ,tags=['optener'])
-def get_users(db:Session = Depends(get_db)):
-    """funcion para llamar a usuario prueba"""
+@user.get('/api/users/lists/{token}', response_model=UsersWithTokenResponse, tags=['prueba'])
+def get_users(token: str, db: Session = Depends(get_db)):
+    """Función para obtener usuarios con el id_token"""
+    
+    id_user = verify_token(token=token)
+    id_token = int(id_user['sub'])
+    
     users = db.query(User).all()
-    return users
 
+    user_list = [
+        UserResponse(
+            id=user.id,
+            username=user.username,
+            profile_photo=user.profile_photo,
+            email=user.email,
+            exp=user.exp  
+        ) for user in users
+    ]
+    
+    return {'id_token': id_token, 'users': user_list}
 
 
 @user.get('/api/get_user/{id}',tags=['optener'])
@@ -297,22 +310,17 @@ cloudinary.config(
 async def update_profile_photo(token: str, file: UploadFile = File(...), db:Session=Depends(get_db)):
     
     try:
-       
-        
         usuario = verify_token(token=token)    
         user_id = get_user_by_id(db=db, id=usuario['sub'])
     
-        # Sube la imagen a Cloudinary
         response = cloudinary.uploader.upload(file.file)
-        image_url = response['secure_url']  # Obtén la URL de la imagen
+        image_url = response['secure_url']  
 
-        # Aquí deberías guardar la URL en tu base de datos asociada al usuario
-        # Por ejemplo:
         user = db.query(User).filter(User.id == user_id.id).first()
         user.profile_photo = image_url
         db.commit()
 
-        return {"url": image_url}  # Devuelve la URL de la imagen
+        return {"url": image_url}  
     except Exception as e:
         return JSONResponse(content={"error": str(e)}, status_code=400)
     
@@ -372,9 +380,15 @@ def update_exp(token:str,exp:int, db:Session = Depends(get_db)):
     db_user = db.query(User).filter(User.id==user_id.id).first()
     if db_user is None:
         raise HTTPException(status_code=404, detail="No se encontró el usuario")
-    if exp == 1:
-        db_user.exp += 5
+    
+    db_user.exp += exp
+    
     db.commit()
+    if db_user.exp >= 500:
+        db_user.level = 'Explorador'
+        db.commit()    
+        
+        
     return {"message": "EXP del usuario actualizada", "user_id": user_id, "new_exp": db_user.exp}
 
 
@@ -396,7 +410,7 @@ def create_grupo(grupo: GrupoCreate,token: str, db: Session = Depends(get_db)):
      
     if db.query(Grupo).filter(Grupo.name_group == grupo.name_group).first():
         raise HTTPException(status_code=400, detail="Este nombre  ya existe")
-    if len(grupo.name_group) >= 8:
+    if len(grupo.name_group) >= 12:
         raise HTTPException(status_code=400, detail="Este nombre  es muy largo")
     else:
         db_grupo = Grupo(
@@ -477,8 +491,6 @@ def get_user_grupos(user_id: int, db: Session = Depends(get_db)):
     
     return db_user.grupos
 
-
-
 @user.get("/grupos/{grupo_id}/users", response_model=List[Red_Miembros],tags=['grupos'])
 def get_grupo_users(grupo_id: int, db: Session = Depends(get_db)):
     """Función para obtener todos los integrantes del grupo por el id del grupo."""
@@ -489,6 +501,15 @@ def get_grupo_users(grupo_id: int, db: Session = Depends(get_db)):
     
     # Devuelve la lista de usuarios del grupo
     return db_grupo.usuarios
+
+@user.get("/grupos_get/{grupo_id}/users", response_model=Grupo_respose ,tags=['grupos'])
+def get_grupo_users(grupo_id: int, db: Session = Depends(get_db)):
+    """Función para obtener todos los integrantes del grupo por el id del grupo."""
+    db_grupo = db.query(Grupo).filter(Grupo.id == grupo_id).first()
+    if not db_grupo:
+        raise HTTPException(status_code=404, detail="Grupo not found")
+    return db_grupo
+
 
 
 @user.post("/grupos/{grupo_id}/users",tags=['grupos'])
