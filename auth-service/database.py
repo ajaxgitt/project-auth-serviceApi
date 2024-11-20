@@ -4,7 +4,7 @@ from sqlalchemy.orm import sessionmaker
 from decouple import config
 
 
-SQLALCHEMY_DATABASE_URL = "mysql+mysqldb://root:password@mysql:3306/my_db"
+SQLALCHEMY_DATABASE_URL = "mysql://root:eJNSpIFuKbxqUxFoXyTFDLxrKBaFndgd@autorack.proxy.rlwy.net:25532/railway"
 
 engine = create_engine(SQLALCHEMY_DATABASE_URL)
 
